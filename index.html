@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title> KANBOARD STANLEY </title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #ece9e6, #ffffff);
+      min-height: 100vh;
+      padding: 20px;
+      color: #333;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 25px;
+      font-size: 2rem;
+      color: #222;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .column {
+      background: #fff;
+      border-radius: 14px;
+      padding: 15px;
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+      display: flex;
+      flex-direction: column;
+      transition: all 0.25s ease-in-out;
+      border-top: 8px solid transparent;
+    }
+
+    #todo { border-top-color: #3b82f6; }
+    #doing { border-top-color: #facc15; }
+    #done { border-top-color: #22c55e; }
+
+    .column:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .column h3 {
+      text-align: center;
+      margin-bottom: 12px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .task {
+      background: #f9fafb;
+      margin: 10px 0;
+      padding: 12px;
+      border-radius: 10px;
+      cursor: grab;
+      font-size: 0.95rem;
+      line-height: 1.4;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+      border-left: 6px solid #888;
+      transition: transform 0.2s ease, background 0.3s ease, opacity 0.3s ease;
+      position: relative;
+    }
+
+    #todo .task { border-left-color: #3b82f6; }
+    #doing .task { border-left-color: #facc15; }
+    #done .task { border-left-color: #22c55e; }
+
+    .task:hover {
+      transform: translateX(4px) scale(1.02);
+      background: #f1f5f9;
+    }
+
+    .task.dragging {
+      opacity: 0.5;
+    }
+
+    .delete {
+      position: absolute;
+      right: 10px;
+      top: 8px;
+      cursor: pointer;
+      color: #ef4444;
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+
+    .edit-input {
+      width: 90%;
+      border: none;
+      padding: 6px;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      outline: 1px solid #3b82f6;
+    }
+
+    .controls {
+      max-width: 700px;
+      margin: 0 auto 25px auto;
+      display: flex;
+      gap: 10px;
+    }
+
+    .controls input {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: border 0.2s ease;
+    }
+
+    .controls input:focus {
+      outline: none;
+      border: 1px solid #3b82f6;
+      box-shadow: 0 0 4px rgba(59,130,246,0.4);
+    }
+
+    .controls button {
+      background: #3b82f6;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 18px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s ease, transform 0.2s ease;
+    }
+
+    .controls button:hover {
+      background: #2563eb;
+      transform: translateY(-2px);
+    }
+
+    .search-bar {
+      max-width: 700px;
+      margin: 0 auto 20px auto;
+      display: flex;
+      justify-content: center;
+    }
+
+    .search-bar input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      font-size: 1rem;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .search-bar input:focus {
+      outline: none;
+      border: 1px solid #22c55e;
+      box-shadow: 0 0 6px rgba(34,197,94,0.5);
+    }
+
+    /* ===== Destaque da busca ===== */
+    .highlight {
+      background: #dcfce7 !important;
+      border: 2px solid #22c55e !important;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0px rgba(34,197,94,0.6); }
+      50% { box-shadow: 0 0 10px rgba(34,197,94,0.8); }
+      100% { box-shadow: 0 0 0px rgba(34,197,94,0.6); }
+    }
+
+    .dimmed {
+      opacity: 0.3;
+    }
+
+    .column.over {
+      background: #f8fafc;
+      border: 2px dashed #60a5fa;
+    }
+  </style>
+</head>
+<body>
+  <h2>📌 KANBOARD STANLEY 📌</h2>
+
+  <div class="search-bar">
+    <input type="text" id="searchInput" placeholder="🔎 Buscar tarefa...">
+  </div>
+
+  <div class="controls">
+    <input type="text" id="taskInput" placeholder="Digite uma nova tarefa...">
+    <button onclick="addTask()">Adicionar</button>
+  </div>
+
+  <div class="board">
+    <div class="column" id="todo">
+      <h3>📝 A Fazer</h3>
+    </div>
+    <div class="column" id="doing">
+      <h3>⚡ Fazendo</h3>
+    </div>
+    <div class="column" id="done">
+      <h3>✅ Feito</h3>
+    </div>
+  </div>
+
+  <script>
+    const taskInput = document.getElementById('taskInput');
+    const searchInput = document.getElementById('searchInput');
+    const columns = document.querySelectorAll('.column');
+
+    window.onload = loadTasks;
+
+    function saveTasks() {
+      const data = {};
+      columns.forEach(column => {
+        const tasks = [...column.querySelectorAll('.task')].map(task => task.querySelector('.text').innerText.trim());
+        data[column.id] = tasks;
+      });
+      localStorage.setItem('kanbanData', JSON.stringify(data));
+    }
+
+    function loadTasks() {
+      const data = JSON.parse(localStorage.getItem('kanbanData')) || {};
+      for (const columnId in data) {
+        data[columnId].forEach(text => {
+          const task = createTaskElement(text);
+          document.getElementById(columnId).appendChild(task);
+        });
+      }
+    }
+
+    function createTaskElement(text) {
+      const task = document.createElement('div');
+      task.className = 'task';
+      task.draggable = true;
+      task.innerHTML = `<span class="text">${text}</span><span class="delete" onclick="deleteTask(this)">×</span>`;
+      
+      task.querySelector('.text').addEventListener('dblclick', function() {
+        editTask(this);
+      });
+
+      addDragEvents(task);
+      return task;
+    }
+
+    function addTask() {
+      const text = taskInput.value.trim();
+      if (!text) return;
+      const task = createTaskElement(text);
+      document.getElementById('todo').appendChild(task);
+      taskInput.value = '';
+      saveTasks();
+    }
+
+    function deleteTask(el) {
+      el.parentElement.remove();
+      saveTasks();
+    }
+
+    function editTask(span) {
+      const oldText = span.innerText;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = oldText;
+      input.className = 'edit-input';
+
+      span.replaceWith(input);
+      input.focus();
+
+      input.addEventListener('blur', () => finishEdit(input, span));
+      input.addEventListener('keypress', e => {
+        if (e.key === 'Enter') finishEdit(input, span);
+      });
+    }
+
+    function finishEdit(input, span) {
+      const newText = input.value.trim() || "Tarefa sem título";
+      span.innerText = newText;
+      input.replaceWith(span);
+      saveTasks();
+    }
+
+    function addDragEvents(task) {
+      task.addEventListener('dragstart', () => {
+        task.classList.add('dragging');
+      });
+      task.addEventListener('dragend', () => {
+        task.classList.remove('dragging');
+        saveTasks();
+      });
+    }
+
+    columns.forEach(column => {
+      column.addEventListener('dragover', e => {
+        e.preventDefault();
+        column.classList.add('over');
+        const dragging = document.querySelector('.dragging');
+        if (dragging) column.appendChild(dragging);
+      });
+
+      column.addEventListener('dragleave', () => {
+        column.classList.remove('over');
+      });
+
+      column.addEventListener('drop', () => {
+        column.classList.remove('over');
+        saveTasks();
+      });
+    });
+
+    searchInput.addEventListener('input', () => {
+      const searchText = searchInput.value.toLowerCase();
+      const allTasks = document.querySelectorAll('.task');
+
+      allTasks.forEach(task => {
+        const text = task.querySelector('.text').innerText.toLowerCase();
+        if (searchText && text.includes(searchText)) {
+          task.classList.add('highlight');
+          task.classList.remove('dimmed');
+        } else if (searchText && !text.includes(searchText)) {
+          task.classList.remove('highlight');
+          task.classList.add('dimmed');
+        } else {
+          task.classList.remove('highlight', 'dimmed');
+        }
+      });
+    });
+  </script>
+  <footer class="copyright-bar">
+    &copy; 2025 <a href="https://github.com/StanleyCarvalho" target="_blank"> Github Stanley </a>. Desenvolvido pelo Stanley.
+  </footer>
+
+  <!-- Estilos -->
+
+  <style>
+    .copyright-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background-color: #000;
+      color: #fff;
+      text-align: center;
+      padding: 12px 0;
+      font-size: 0.95rem;
+      font-weight: bold;
+      box-shadow: 0 -3px 6px rgba(0,0,0,0.3);
+      z-index: 999;
+    }
+
+    .copyright-bar a {
+      color: #22c55e;
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+
+    .copyright-bar a:hover {
+      color: #3b82f6;
+      text-decoration: underline;
+    }
+  </style>
+</body>
+</html>
